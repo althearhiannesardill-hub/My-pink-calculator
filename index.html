@@ -1,0 +1,260 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pink Calculator</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; padding: 20px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #ffe1ee, #fff8fb);
+  font-family: Arial, sans-serif;
+}
+.calculator {
+  width: 100%; max-width: 360px; padding: 22px;
+  border-radius: 28px; background: #fff0f6;
+  border: 1px solid #f3b1ce;
+  box-shadow: 0 14px 35px #c94c8520;
+}
+header { display: flex; justify-content: space-between; align-items: center; }
+h1 { font-size: 23px; color: #a51e5a; margin: 0; }
+.eyebrow { font-size: 10px; letter-spacing: 2px; color: #c34d83; }
+.heart { font-size: 32px; color: #e84393; }
+.screen {
+  margin: 22px 0 14px; padding: 20px 16px;
+  min-height: 108px; background: white;
+  border: 1px solid #f5c7da; border-radius: 20px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  align-items: flex-end; overflow: hidden;
+}
+#expression { color: #bd6790; font-size: 13px; min-height: 18px; }
+#display {
+  width: 100%; text-align: right; color: #71133e;
+  font-size: clamp(26px, 8vw, 36px); font-weight: bold;
+  overflow-wrap: anywhere; margin-top: 7px;
+}
+.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+button {
+  min-width: 0; min-height: 55px; border: 0; border-radius: 14px;
+  background: white; color: #8e174c; font-size: 20px;
+  font-weight: bold; cursor: pointer; touch-action: manipulation;
+  box-shadow: 0 3px 0 #e9bfd0;
+}
+button:active { transform: translateY(2px); box-shadow: none; }
+.utility { background: #f8c9dd; font-size: 17px; }
+.operator { background: #ed91b7; color: white; }
+.equals { background: #d63384; color: white; }
+.footer { text-align: center; color: #bd6790; font-size: 12px; margin: 18px 0 0; }
+</style>
+</head>
+<body>
+<main class="calculator">
+  <header>
+    <div>
+      <p class="eyebrow">CUTE • SIMPLE • PINK</p>
+      <h1>Pink Calculator</h1>
+    </div>
+    <span class="heart">♡</span>
+  </header>
+
+  <section class="screen" aria-live="polite">
+    <div id="expression">READY</div>
+    <output id="display">0</output>
+  </section>
+
+  <div class="keys">
+    <button class="utility" data-action="clear">AC</button>
+    <button class="utility" data-action="backspace">⌫</button>
+    <button class="utility" data-action="percent">%</button>
+    <button class="operator" data-op="÷">÷</button>
+
+    <button data-digit="7">7</button>
+    <button data-digit="8">8</button>
+    <button data-digit="9">9</button>
+    <button class="operator" data-op="×">×</button>
+
+    <button data-digit="4">4</button>
+    <button data-digit="5">5</button>
+    <button data-digit="6">6</button>
+    <button class="operator" data-op="−">−</button>
+
+    <button data-digit="1">1</button>
+    <button data-digit="2">2</button>
+    <button data-digit="3">3</button>
+    <button class="operator" data-op="+">+</button>
+
+    <button class="utility" data-action="sign">+/−</button>
+    <button data-digit="0">0</button>
+    <button data-action="decimal">.</button>
+    <button class="equals" data-action="equals">=</button>
+  </div>
+  <p class="footer">Made with ♥ in pink</p>
+</main>
+
+<script>
+const displayEl = document.getElementById("display");
+const expressionEl = document.getElementById("expression");
+
+let display = "0";
+let firstOperand = null;
+let operator = null;
+let waitingForNext = false;
+let history = "";
+
+function formatNumber(n) {
+  return Number.isFinite(n) ? String(Number(n.toPrecision(12))) : "Error";
+}
+function updateScreen() {
+  displayEl.textContent = display;
+  expressionEl.textContent = history ||
+    (operator ? `${firstOperand} ${operator}` : "READY");
+}
+function inputDigit(digit) {
+  if (display === "Error" || display === "Cannot divide by 0") {
+    display = digit;
+    waitingForNext = false;
+  } else if (waitingForNext) {
+    display = digit;
+    waitingForNext = false;
+  } else {
+    display = display === "0" ? digit : display + digit;
+  }
+  history = "";
+  updateScreen();
+}
+function inputDecimal() {
+  if (display === "Error" || display === "Cannot divide by 0" || waitingForNext) {
+    display = "0.";
+    waitingForNext = false;
+  } else if (!display.includes(".")) {
+    display += ".";
+  }
+  history = "";
+  updateScreen();
+}
+function compute(a, b, op) {
+  switch (op) {
+    case "+": return a + b;
+    case "−": return a - b;
+    case "×": return a * b;
+    case "÷": return b === 0 ? null : a / b;
+    default: return null;
+  }
+}
+function chooseOperator(nextOperator) {
+  const value = Number(display);
+  if (!Number.isFinite(value)) return;
+
+  if (operator && firstOperand !== null && !waitingForNext) {
+    const result = compute(firstOperand, value, operator);
+    if (result === null) {
+      display = "Cannot divide by 0";
+      firstOperand = null;
+      operator = null;
+      waitingForNext = true;
+      history = "";
+      updateScreen();
+      return;
+    }
+    display = formatNumber(result);
+    firstOperand = result;
+  } else if (firstOperand === null || operator === null) {
+    firstOperand = value;
+  }
+
+  operator = nextOperator;
+  waitingForNext = true;
+  history = "";
+  updateScreen();
+}
+function calculate() {
+  if (operator === null || firstOperand === null || waitingForNext) return;
+  const a = firstOperand;
+  const b = Number(display);
+  const op = operator;
+  const result = compute(a, b, op);
+
+  history = `${formatNumber(a)} ${op} ${formatNumber(b)} =`;
+  display = result === null ? "Cannot divide by 0" : formatNumber(result);
+  firstOperand = null;
+  operator = null;
+  waitingForNext = true;
+  updateScreen();
+}
+function clearAll() {
+  display = "0";
+  firstOperand = null;
+  operator = null;
+  waitingForNext = false;
+  history = "";
+  updateScreen();
+}
+function backspace() {
+  if (waitingForNext || display === "Error" || display === "Cannot divide by 0") {
+    display = "0";
+    waitingForNext = false;
+  } else if (display.length <= 1 ||
+    (display.length === 2 && display.startsWith("-"))) {
+    display = "0";
+  } else {
+    display = display.slice(0, -1);
+  }
+  history = "";
+  updateScreen();
+}
+function toggleSign() {
+  if (display === "0" || display === "Error" ||
+      display === "Cannot divide by 0") return;
+  display = display.startsWith("-") ? display.slice(1) : "-" + display;
+  waitingForNext = false;
+  updateScreen();
+}
+function percent() {
+  if (display === "Error" || display === "Cannot divide by 0") return;
+  display = formatNumber(Number(display) / 100);
+  waitingForNext = false;
+  history = "";
+  updateScreen();
+}
+
+document.querySelector(".keys").addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  if (button.dataset.digit !== undefined) {
+    inputDigit(button.dataset.digit);
+  } else if (button.dataset.op) {
+    chooseOperator(button.dataset.op);
+  } else {
+    switch (button.dataset.action) {
+      case "clear": clearAll(); break;
+      case "backspace": backspace(); break;
+      case "percent": percent(); break;
+      case "sign": toggleSign(); break;
+      case "decimal": inputDecimal(); break;
+      case "equals": calculate(); break;
+    }
+  }
+});
+
+document.addEventListener("keydown", event => {
+  if (/^\d$/.test(event.key)) inputDigit(event.key);
+  else if (event.key === ".") inputDecimal();
+  else if (event.key === "+") chooseOperator("+");
+  else if (event.key === "-") chooseOperator("−");
+  else if (event.key === "*") chooseOperator("×");
+  else if (event.key === "/") {
+    event.preventDefault();
+    chooseOperator("÷");
+  } else if (event.key === "Enter" || event.key === "=") calculate();
+  else if (event.key === "Backspace") backspace();
+  else if (event.key === "Escape") clearAll();
+});
+
+updateScreen();
+</script>
+</body>
+</html>
